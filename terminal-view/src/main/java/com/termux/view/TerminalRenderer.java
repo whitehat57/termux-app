@@ -1,9 +1,17 @@
 package com.termux.view;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.Typeface;
+import android.net.Uri;
+import androidx.preference.PreferenceManager;
+import java.io.InputStream;
 
 import com.termux.terminal.TerminalBuffer;
 import com.termux.terminal.TerminalEmulator;
@@ -21,6 +29,8 @@ public final class TerminalRenderer {
     final int mTextSize;
     final Typeface mTypeface;
     private final Paint mTextPaint = new Paint();
+    private Bitmap mBackgroundImage;
+    private final Matrix mBackgroundImageMatrix = new Matrix();
 
     /** The width of a single mono spaced character obtained by {@link Paint#measureText(String)} on a single 'X'. */
     final float mFontWidth;
@@ -53,9 +63,53 @@ public final class TerminalRenderer {
         }
     }
 
+    public void setBackgroundImage(Context context, Uri uri) {
+        try {
+            if (uri == null) {
+                mBackgroundImage = null;
+                return;
+            }
+            InputStream in = context.getContentResolver().openInputStream(uri);
+            mBackgroundImage = BitmapFactory.decodeStream(in);
+            if (in != null) in.close();
+            // Reset matrix so it's recalculated on next render
+            mBackgroundImageMatrix.reset();
+        } catch (Exception e) {
+            mBackgroundImage = null;
+        }
+    }
+
+    private void updateBackgroundImageMatrix(int viewWidth, int viewHeight) {
+        if (mBackgroundImage == null || viewWidth == 0 || viewHeight == 0) return;
+
+        float scale;
+        float dx = 0, dy = 0;
+
+        int dwidth = mBackgroundImage.getWidth();
+        int dheight = mBackgroundImage.getHeight();
+
+        if (dwidth * viewHeight > viewWidth * dheight) {
+            scale = (float) viewHeight / (float) dheight;
+            dx = (viewWidth - dwidth * scale) * 0.5f;
+        } else {
+            scale = (float) viewWidth / (float) dwidth;
+            dy = (viewHeight - dheight * scale) * 0.5f;
+        }
+
+        mBackgroundImageMatrix.setScale(scale, scale);
+        mBackgroundImageMatrix.postTranslate(Math.round(dx), Math.round(dy));
+    }
+
     /** Render the terminal to a canvas with at a specified row scroll, and an optional rectangular selection. */
     public final void render(TerminalEmulator mEmulator, Canvas canvas, int topRow,
                              int selectionY1, int selectionY2, int selectionX1, int selectionX2) {
+        if (mBackgroundImage != null) {
+            if (mBackgroundImageMatrix.isIdentity()) {
+                updateBackgroundImageMatrix(canvas.getWidth(), canvas.getHeight());
+            }
+            canvas.drawBitmap(mBackgroundImage, mBackgroundImageMatrix, null);
+        }
+
         final boolean reverseVideo = mEmulator.isReverseVideo();
         final int endRow = topRow + mEmulator.mRows;
         final int columns = mEmulator.mColumns;

@@ -6,7 +6,10 @@ import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
+import android.net.Uri;
+import androidx.preference.PreferenceManager;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Handler;
@@ -43,7 +46,7 @@ import com.termux.terminal.TerminalSession;
 import com.termux.view.textselection.TextSelectionCursorController;
 
 /** View displaying and interacting with a {@link TerminalSession}. */
-public final class TerminalView extends View {
+public final class TerminalView extends View implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     /** Log terminal view key and IME events. */
     private static boolean TERMINAL_VIEW_KEY_LOGGING_ENABLED = false;
@@ -135,6 +138,9 @@ public final class TerminalView extends View {
 
     public TerminalView(Context context, AttributeSet attributes) { // NO_UCD (unused code)
         super(context, attributes);
+
+        PreferenceManager.getDefaultSharedPreferences(context).registerOnSharedPreferenceChangeListener(this);
+
         mGestureRecognizer = new GestureAndScaleRecognizer(context, new GestureAndScaleRecognizer.Listener() {
 
             boolean scrolledWithFinger;
@@ -984,6 +990,8 @@ public final class TerminalView extends View {
         int viewHeight = getHeight();
         if (viewWidth == 0 || viewHeight == 0 || mTermSession == null) return;
 
+        loadBackgroundImage();
+
         // Set to 80 and 24 if you want to enable vttest.
         int newColumns = Math.max(4, (int) (viewWidth / mRenderer.mFontWidth));
         int newRows = Math.max(4, (viewHeight - mRenderer.mFontLineSpacingAndAscent) / mRenderer.mFontLineSpacing);
@@ -1441,6 +1449,8 @@ public final class TerminalView extends View {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
 
+        PreferenceManager.getDefaultSharedPreferences(getContext()).unregisterOnSharedPreferenceChangeListener(this);
+
         if (mTextSelectionCursorController != null) {
             // Might solve the following exception
             // android.view.WindowLeaked: Activity com.termux.app.TermuxActivity has leaked window android.widget.PopupWindow
@@ -1495,4 +1505,20 @@ public final class TerminalView extends View {
         }
     }
 
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        // Hard-coding the key is not ideal, but avoids a direct dependency between modules.
+        if ("background_image_uri".equals(key)) {
+            loadBackgroundImage();
+            invalidate();
+        }
+    }
+
+    private void loadBackgroundImage() {
+        if (mRenderer == null) return;
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
+        String uriString = prefs.getString("background_image_uri", null);
+        Uri uri = (uriString == null) ? null : Uri.parse(uriString);
+        mRenderer.setBackgroundImage(getContext(), uri);
+    }
 }

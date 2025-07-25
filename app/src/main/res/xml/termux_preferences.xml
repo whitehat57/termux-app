@@ -15,4 +15,9 @@
         app:summary="@string/termux_terminal_view_preferences_summary"
         app:fragment="com.termux.app.fragments.settings.termux.TerminalViewPreferencesFragment"/>
 
+    <Preference
+        app:title="Styling"
+        app:summary="Set background image and other styling options"
+        app:fragment="com.termux.app.fragments.settings.termux.StylingPreferencesFragment"/>
+
 </PreferenceScreen>

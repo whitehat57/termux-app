@@ -1,0 +1,14 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        app:key="background"
+        app:title="Background">
+
+        <Preference
+            app:key="background_image"
+            app:title="Select Background Image"
+            app:summary="Choose an image to display as the terminal background"/>
+
+    </PreferenceCategory>
+
+</PreferenceScreen>
