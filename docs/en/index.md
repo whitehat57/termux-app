@@ -11,3 +11,4 @@ Welcome to documentation for the [Termux App].
 ##
 
 [Termux App]: https://github.com/termux/termux-app
+test
